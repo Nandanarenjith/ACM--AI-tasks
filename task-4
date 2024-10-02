@@ -1,0 +1,31 @@
+# Install the necessary packages
+!pip install transformers accelerate
+import os
+import torch
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
+from accelerate import init_empty_weights, infer_auto_device_map
+
+# Hugging Face API key
+HUGGINGFACE_FACE_API_KEY = os.environ.get("HUGGINGFACE_FACE_API_KEY")
+model_id = "lmsys/fastchat-t5-3b-v1.0"
+
+# Check device setup, defaulting to CPU if GPU is unavailable
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Running on device: {device}")
+
+# Load the tokenizer
+tokenizer = AutoTokenizer.from_pretrained(model_id, legacy=False)
+
+# Load model with lower precision (FP16) if on GPU, otherwise use FP32 for CPU
+dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+
+# Load the model with reduced precision for memory efficiency
+model = AutoModelForSeq2SeqLM.from_pretrained(
+    model_id,
+    torch_dtype=dtype  # Use FP16 on GPU, or FP32 on CP
+    ).to(device)
+generation_pipeline = pipeline("text2text-generation",model=model,tokenizer=tokenizer,device=0 if torch.cuda.is_available() else -1,  max_length=200)
+
+test_input = "name a animal."
+output = generation_pipeline(test_input)
+print(output)
